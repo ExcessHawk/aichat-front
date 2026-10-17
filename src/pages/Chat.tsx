@@ -197,6 +197,33 @@ export function ChatPage() {
     navigate(`/c/${creada.id}`)
   }
 
+  /**
+   * La raíz siempre tiene que acabar dentro de una conversación.
+   *
+   * Sin esto, quien llegaba a `/` y escribía sin tocar "Nueva conversación"
+   * recibía un "Primero abre una conversación" — la app regañando a alguien
+   * que acababa de llegar. Se abre la última, y si no hay ninguna se crea.
+   */
+  const aterrizando = useRef(false)
+  useEffect(() => {
+    if (conversationId !== null || !conversaciones.data || aterrizando.current) return
+    aterrizando.current = true
+
+    const ultima = conversaciones.data.find((c) => !c.archivedAt) ?? conversaciones.data[0]
+    if (ultima) {
+      navigate(`/c/${ultima.id}`, { replace: true })
+      return
+    }
+    void crear
+      .mutateAsync({})
+      .then((creada) => navigate(`/c/${creada.id}`, { replace: true }))
+      .catch(() => {
+        // Si ni siquiera se puede crear una, que el siguiente render lo vuelva
+        // a intentar en vez de quedarse en una raíz muerta.
+        aterrizando.current = false
+      })
+  }, [conversationId, conversaciones.data, crear, navigate])
+
   const actual = conversaciones.data?.find((c) => c.id === conversationId)
 
   return (
