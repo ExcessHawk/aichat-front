@@ -1,0 +1,159 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, sesion } from './client'
+
+export interface Conversacion {
+  id: number
+  title: string | null
+  model: string
+  archivedAt: string | null
+  createdAt: string
+  updatedAt: string
+  messageCount?: number
+  costCents?: number
+}
+
+export interface Mensaje {
+  id: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  inputTokens: number
+  outputTokens: number
+  costCents: number
+  stoppedByUser: boolean
+  createdAt: string
+}
+
+export interface Modelo {
+  id: string
+  label: string
+  inputCentsPerMillion: number
+  outputCentsPerMillion: number
+}
+
+export interface Consumo {
+  periodStart: string
+  inputTokens: number
+  outputTokens: number
+  costCents: number
+  limitCents: number
+  restanteCents: number
+}
+
+export type EventoChat =
+  | { type: 'token'; text: string }
+  | { type: 'usage'; inputTokens: number; outputTokens: number; costCents: number }
+  | { type: 'done'; messageId: number; stopped: boolean }
+  | { type: 'error'; message: string }
+
+export function useConversaciones() {
+  return useQuery({
+    queryKey: ['conversaciones'],
+    queryFn: () => api.get<{ conversations: Conversacion[] }>('/api/conversations'),
+    select: (d) => d.conversations,
+  })
+}
+
+export function useMensajes(conversationId: number | null) {
+  return useQuery({
+    queryKey: ['mensajes', conversationId],
+    queryFn: () => api.get<{ messages: Mensaje[] }>(`/api/conversations/${conversationId}/messages`),
+    select: (d) => d.messages,
+    enabled: conversationId !== null,
+  })
+}
+
+export function useModelos() {
+  return useQuery({
+    queryKey: ['modelos'],
+    queryFn: () => api.get<{ models: Modelo[] }>('/api/models'),
+    select: (d) => d.models,
+    staleTime: Infinity,
+  })
+}
+
+export function useConsumo() {
+  return useQuery({
+    queryKey: ['consumo'],
+    queryFn: () => api.get<Consumo>('/api/usage'),
+  })
+}
+
+export function useCrearConversacion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { model?: string }) => api.post<Conversacion>('/api/conversations', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversaciones'] }),
+  })
+}
+
+export function useBorrarConversacion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.del<{ message: string }>(`/api/conversations/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversaciones'] }),
+  })
+}
+
+/**
+ * Lee el canal del turno.
+ *
+ * Es un POST, así que `EventSource` no sirve: hay que leer el cuerpo con
+ * `fetch` y partirlo en bloques. El framework no escribe línea `event:`, de
+ * modo que el tipo viaja dentro del JSON.
+ *
+ * La señal que entra es la que corta: cerrar la lectura cierra la conexión, y
+ * el servidor lo nota y deja de producir.
+ */
+export async function* enviarMensaje(
+  conversationId: number,
+  content: string,
+  signal: AbortSignal,
+): AsyncGenerator<EventoChat> {
+  const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sesion.token ? { Authorization: `Bearer ${sesion.token}` } : {}),
+    },
+    body: JSON.stringify({ content }),
+    signal,
+  })
+
+  if (!res.ok || !res.body) {
+    const texto = await res.text().catch(() => '')
+    let mensaje = `Error ${res.status}`
+    try {
+      const datos = JSON.parse(texto)
+      mensaje = datos.error || datos.detail || datos.message || mensaje
+    } catch {
+      /* el cuerpo no era JSON */
+    }
+    yield { type: 'error', message: mensaje }
+    return
+  }
+
+  const lector = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await lector.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    let corte = buffer.indexOf('\n\n')
+    while (corte !== -1) {
+      const bloque = buffer.slice(0, corte)
+      buffer = buffer.slice(corte + 2)
+      corte = buffer.indexOf('\n\n')
+
+      const linea = bloque.split('\n').find((l) => l.startsWith('data:'))
+      if (!linea) continue
+      try {
+        yield JSON.parse(linea.slice(5).trim()) as EventoChat
+      } catch {
+        /* bloque partido a la mitad: el siguiente lo completa */
+      }
+    }
+  }
+}

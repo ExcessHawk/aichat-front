@@ -1,0 +1,531 @@
+/*
+ * Mínimo a propósito.
+ *
+ * Sin bordes, sin tarjetas, mucho aire. Lo único que se mira en esta pantalla
+ * es el texto, así que la interfaz se quita de en medio: las respuestas van en
+ * serif, que es lo que se lee, y los controles en la sans del sistema, que es
+ * lo que se usa.
+ */
+
+:root {
+  --tinta: #1b1a17;
+  --tinta-suave: #6d6a63;
+  --papel: #fbfaf7;
+  --papel-hundido: #f2f0ea;
+  --acento: #2f5d50;
+  --alerta: #9b2c2c;
+  --ancho-lectura: 46rem;
+
+  --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: 'Newsreader Variable', Newsreader, Georgia, serif;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Estructura ─────────────────────────────────────────────────────────── */
+
+.pantalla {
+  display: grid;
+  grid-template-columns: 17rem 1fr;
+  height: 100%;
+}
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+  background: var(--papel-hundido);
+  overflow: hidden;
+}
+
+.boton-nueva {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  border-radius: 0.5rem;
+  background: var(--acento);
+  color: #fff;
+  font-weight: 600;
+}
+
+.lista {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.fila:hover,
+.fila.activa {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.fila .titulo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+}
+
+.fila .titulo span {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila .titulo small {
+  color: var(--tinta-suave);
+  font-size: 0.75rem;
+}
+
+.fila .quitar {
+  opacity: 0;
+  padding: 0.25rem 0.4rem;
+  color: var(--tinta-suave);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.fila:hover .quitar,
+.fila .quitar:focus-visible {
+  opacity: 1;
+}
+
+.lateral-pie {
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
+.lateral-pie p {
+  margin: 0.15rem 0;
+}
+
+/* ── Conversación ───────────────────────────────────────────────────────── */
+
+.conversacion {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+
+.cabecera {
+  padding: 1.25rem 2rem 0.5rem;
+}
+
+.cabecera h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 500;
+}
+
+.cabecera .modelo {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
+.hilo,
+.vista {
+  flex: 1;
+  min-height: 0;
+}
+
+.vista {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 2rem 0;
+}
+
+.turno {
+  width: 100%;
+  max-width: var(--ancho-lectura);
+  margin: 0 auto;
+  padding: 0.85rem 0;
+}
+
+.turno-usuario {
+  color: var(--tinta);
+  font-weight: 500;
+}
+
+.turno-usuario::before {
+  content: 'Tú';
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tinta-suave);
+}
+
+/* Lo que se lee va en serif; lo que se usa, no. */
+.turno-asistente {
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  line-height: 1.75;
+}
+
+.turno-asistente p {
+  margin: 0 0 0.9rem;
+}
+
+.turno-asistente ul {
+  margin: 0 0 0.9rem;
+  padding-left: 1.2rem;
+}
+
+.turno-asistente code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--papel-hundido);
+  padding: 0.1em 0.3em;
+  border-radius: 0.25rem;
+}
+
+.bloque-codigo {
+  position: relative;
+  margin: 0 0 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.bloque-codigo pre {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: var(--papel-hundido);
+}
+
+.bloque-codigo .shiki {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+}
+
+.bloque-codigo .copiar {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--tinta-suave);
+  background: var(--papel);
+  border-radius: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.bloque-codigo:hover .copiar,
+.bloque-codigo .copiar:focus-visible {
+  opacity: 1;
+}
+
+.vacio {
+  max-width: var(--ancho-lectura);
+  margin: 15vh auto 0;
+  font-family: var(--serif);
+  font-size: 1.2rem;
+}
+
+.vacio .nota {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+}
+
+.nota {
+  color: var(--tinta-suave);
+}
+
+/* ── Redactor ───────────────────────────────────────────────────────────── */
+
+.pie {
+  position: sticky;
+  bottom: 0;
+  padding: 0.75rem 0 1.25rem;
+  background: linear-gradient(to bottom, transparent, var(--papel) 35%);
+}
+
+.al-final {
+  display: block;
+  margin: 0 auto 0.5rem;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  color: var(--tinta-suave);
+  background: var(--papel-hundido);
+  border-radius: 999px;
+}
+
+/*
+ * El autoscroll tiene que soltar: mientras estás hasta abajo sigue pegado, y en
+ * cuanto subes a releer aparece esto. El componente se marca `disabled` cuando
+ * ya estás abajo, que es justo cuando el botón no tiene nada que ofrecer.
+ */
+.al-final:disabled,
+.al-final[data-disabled='true'] {
+  display: none;
+}
+
+.redactor {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  max-width: var(--ancho-lectura);
+  margin: 0 auto;
+  padding: 0.5rem 0.6rem;
+  background: var(--papel-hundido);
+  border-radius: 0.75rem;
+}
+
+.entrada {
+  flex: 1;
+  resize: none;
+  max-height: 12rem;
+  padding: 0.45rem 0.4rem;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.enviar,
+.parar {
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+.enviar {
+  background: var(--acento);
+  color: #fff;
+}
+
+.enviar:disabled {
+  opacity: 0.4;
+}
+
+.parar {
+  background: var(--alerta);
+  color: #fff;
+}
+
+/* ── Pantallas sueltas ──────────────────────────────────────────────────── */
+
+.centrado {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(22rem, 100%);
+  text-align: left;
+}
+
+.formulario h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+}
+
+.formulario label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
+}
+
+.formulario input {
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  color: var(--tinta);
+  background: var(--papel-hundido);
+  border: none;
+  border-radius: 0.5rem;
+  outline-offset: 2px;
+}
+
+.formulario button[type='submit'] {
+  padding: 0.55rem;
+  border-radius: 0.5rem;
+  background: var(--acento);
+  color: #fff;
+  font-weight: 600;
+}
+
+.error {
+  margin: 0;
+  color: var(--alerta);
+  font-size: 0.85rem;
+}
+
+.consumo-pantalla {
+  max-width: var(--ancho-lectura);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.consumo-pantalla h1 {
+  margin: 0.4rem 0 0.2rem;
+  font-family: var(--serif);
+  font-weight: 500;
+}
+
+.consumo-pantalla h2 {
+  margin: 2rem 0 0.5rem;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.volver {
+  color: var(--tinta-suave);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.numero {
+  margin: 1.5rem 0;
+}
+
+.numero strong {
+  font-family: var(--serif);
+  font-size: 3rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.numero span {
+  margin-left: 0.5rem;
+  color: var(--tinta-suave);
+}
+
+.barra {
+  height: 4px;
+  margin-top: 0.75rem;
+  background: var(--papel-hundido);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barra div {
+  height: 100%;
+  background: var(--acento);
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.rejilla div {
+  display: flex;
+  flex-direction: column;
+}
+
+.rejilla span {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+}
+
+.rejilla small {
+  color: var(--tinta-suave);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--tinta-suave);
+}
+
+th,
+td {
+  padding: 0.4rem 0.5rem 0.4rem 0;
+}
+
+tbody tr + tr td {
+  border-top: 1px solid var(--papel-hundido);
+}
+
+/* ── Teléfono ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 48rem) {
+  .pantalla {
+    grid-template-columns: 1fr;
+  }
+
+  .lateral {
+    display: none;
+  }
+
+  .vista {
+    padding: 1rem;
+  }
+
+  .cabecera {
+    padding: 1rem 1rem 0.5rem;
+  }
+}
