@@ -260,9 +260,67 @@ button {
   margin-bottom: 0;
 }
 
-.turno-asistente ul {
+/*
+ * Lo que escribe el modelo es markdown, y trae de todo: títulos, listas
+ * numeradas, citas. Sin estilos propios, un título dentro de una respuesta
+ * heredaba el tamaño de los de la página y rompía el ritmo de lectura.
+ */
+.turno-asistente h3,
+.turno-asistente h4,
+.turno-asistente h5 {
+  margin: 1.5rem 0 0.5rem;
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.turno-asistente h3 {
+  font-size: 1.15em;
+  color: var(--tinta);
+}
+
+.turno-asistente h4 {
+  font-size: 1.04em;
+  color: var(--tinta);
+}
+
+.turno-asistente h5 {
+  font-size: 0.95em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--tinta-suave);
+}
+
+/* El primero no separa de nada: la etiqueta ya puso el aire. */
+.turno-asistente > :first-child {
+  margin-top: 0;
+}
+
+.turno-asistente ul,
+.turno-asistente ol {
   margin: 0 0 0.9rem;
-  padding-left: 1.2rem;
+  padding-left: 1.4rem;
+}
+
+.turno-asistente li {
+  margin-bottom: 0.35rem;
+}
+
+.turno-asistente li::marker {
+  color: var(--tinta-suave);
+}
+
+.turno-asistente blockquote {
+  margin: 0 0 0.9rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--papel-hundido);
+  color: var(--tinta-suave);
+}
+
+.turno-asistente hr {
+  margin: 1.4rem 0;
+  border: none;
+  border-top: 1px solid var(--papel-hundido);
 }
 
 .turno-asistente code {

@@ -14,11 +14,34 @@ import { memo, useEffect, useState } from 'react'
 import { codeToHtml } from 'shiki'
 
 type Bloque =
+  | { tipo: 'titulo'; nivel: number; texto: string }
   | { tipo: 'parrafo'; texto: string }
-  | { tipo: 'lista'; items: string[] }
+  | { tipo: 'lista'; ordenada: boolean; items: string[] }
+  | { tipo: 'cita'; lineas: string[] }
+  | { tipo: 'regla' }
   | { tipo: 'codigo'; lenguaje: string; codigo: string; cerrado: boolean }
 
-function partir(markdown: string): Bloque[] {
+const TITULO = /^(#{1,6})\s+(.*)$/
+const VINETA = /^\s*[-*+]\s+/
+const NUMERADA = /^\s*\d+[.)]\s+/
+const CITA = /^\s*>\s?/
+const REGLA = /^\s*(?:---+|\*\*\*+|___+)\s*$/
+
+/** Una línea que empieza un bloque propio no puede quedarse dentro de un párrafo. */
+function abreBloque(linea: string): boolean {
+  return (
+    linea.trim() === '' ||
+    /^```/.test(linea) ||
+    TITULO.test(linea) ||
+    VINETA.test(linea) ||
+    NUMERADA.test(linea) ||
+    CITA.test(linea) ||
+    REGLA.test(linea)
+  )
+}
+
+/** Se exporta para poder probarla con texto real sin montar React. */
+export function partir(markdown: string): Bloque[] {
   const bloques: Bloque[] = []
   const lineas = markdown.split('\n')
 
@@ -46,13 +69,45 @@ function partir(markdown: string): Bloque[] {
       continue
     }
 
-    if (/^\s*[-*]\s+/.test(linea)) {
-      const items: string[] = []
-      while (i < lineas.length && /^\s*[-*]\s+/.test(lineas[i])) {
-        items.push(lineas[i].replace(/^\s*[-*]\s+/, ''))
+    const titulo = TITULO.exec(linea)
+    if (titulo) {
+      bloques.push({ tipo: 'titulo', nivel: titulo[1].length, texto: titulo[2] })
+      i += 1
+      continue
+    }
+
+    if (REGLA.test(linea)) {
+      bloques.push({ tipo: 'regla' })
+      i += 1
+      continue
+    }
+
+    if (CITA.test(linea)) {
+      const dentro: string[] = []
+      while (i < lineas.length && CITA.test(lineas[i])) {
+        dentro.push(lineas[i].replace(CITA, ''))
         i += 1
       }
-      bloques.push({ tipo: 'lista', items })
+      bloques.push({ tipo: 'cita', lineas: dentro })
+      continue
+    }
+
+    // Una lista numerada y una de viñetas no se mezclan en el mismo bloque.
+    const ordenada = NUMERADA.test(linea)
+    if (ordenada || VINETA.test(linea)) {
+      const marca = ordenada ? NUMERADA : VINETA
+      const items: string[] = []
+      while (i < lineas.length && marca.test(lineas[i])) {
+        items.push(lineas[i].replace(marca, ''))
+        i += 1
+        // Una línea suelta debajo de un punto le pertenece: el modelo parte
+        // las frases largas y sin esto cada trozo se volvía un párrafo aparte.
+        while (i < lineas.length && lineas[i].trim() !== '' && !abreBloque(lineas[i])) {
+          items[items.length - 1] += ` ${lineas[i].trim()}`
+          i += 1
+        }
+      }
+      bloques.push({ tipo: 'lista', ordenada, items })
       continue
     }
 
@@ -62,12 +117,10 @@ function partir(markdown: string): Bloque[] {
     }
 
     const parrafo: string[] = []
-    while (
-      i < lineas.length &&
-      lineas[i].trim() !== '' &&
-      !/^```/.test(lineas[i]) &&
-      !/^\s*[-*]\s+/.test(lineas[i])
-    ) {
+    // La primera línea entra siempre; las siguientes solo si no abren bloque.
+    parrafo.push(lineas[i])
+    i += 1
+    while (i < lineas.length && !abreBloque(lineas[i])) {
       parrafo.push(lineas[i])
       i += 1
     }
@@ -147,13 +200,38 @@ export const Markdown = memo(function Markdown({ texto }: { texto: string }) {
         if (bloque.tipo === 'codigo') {
           return <BloqueCodigo key={i} lenguaje={bloque.lenguaje} codigo={bloque.codigo} />
         }
-        if (bloque.tipo === 'lista') {
+        if (bloque.tipo === 'titulo') {
+          // Dentro de una respuesta no hay h1 ni h2 de verdad: el título de
+          // la página es otro. Y "###" es lo que más escriben los modelos, así
+          // que ese es el subtítulo normal, no el más pequeño y apagado.
+          const Etiqueta = (bloque.nivel <= 3 ? 'h3' : bloque.nivel === 4 ? 'h4' : 'h5') as
+            | 'h3'
+            | 'h4'
+            | 'h5'
           return (
-            <ul key={i}>
+            <Etiqueta key={i} dangerouslySetInnerHTML={{ __html: enLinea(bloque.texto) }} />
+          )
+        }
+        if (bloque.tipo === 'regla') {
+          return <hr key={i} />
+        }
+        if (bloque.tipo === 'cita') {
+          return (
+            <blockquote key={i}>
+              {bloque.lineas.map((linea, j) => (
+                <p key={j} dangerouslySetInnerHTML={{ __html: enLinea(linea) }} />
+              ))}
+            </blockquote>
+          )
+        }
+        if (bloque.tipo === 'lista') {
+          const Etiqueta = bloque.ordenada ? 'ol' : 'ul'
+          return (
+            <Etiqueta key={i}>
               {bloque.items.map((item, j) => (
                 <li key={j} dangerouslySetInnerHTML={{ __html: enLinea(item) }} />
               ))}
-            </ul>
+            </Etiqueta>
           )
         }
         return <p key={i} dangerouslySetInnerHTML={{ __html: enLinea(bloque.texto) }} />
