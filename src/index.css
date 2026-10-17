@@ -53,16 +53,30 @@ button {
 
 /* ── Estructura ─────────────────────────────────────────────────────────── */
 
+/*
+ * La barra lateral se queda; lo que se desplaza es el hilo.
+ *
+ * Con `height: 100%` no bastaba: un elemento de rejilla no encoge por debajo
+ * de su contenido —`min-height` vale `auto`—, así que una conversación larga
+ * estiraba la fila y acababa desplazándose la página entera, barra incluida.
+ * `min-height: 0` en las dos columnas es lo que deja que el hilo se desborde
+ * por dentro.
+ *
+ * Y `dvh` en vez de `vh` porque en un teléfono la barra del navegador aparece
+ * y desaparece: con `vh` la pantalla mide de más y queda un hueco al fondo.
+ */
 .pantalla {
   display: grid;
   grid-template-columns: 17rem 1fr;
-  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .lateral {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-height: 0;
   padding: 1.25rem 1rem;
   background: var(--papel-hundido);
   overflow: hidden;
@@ -80,6 +94,7 @@ button {
 
 .lista {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -149,6 +164,7 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   height: 100%;
 }
 
@@ -169,13 +185,25 @@ button {
   color: var(--tinta-suave);
 }
 
-.hilo,
-.vista {
+/*
+ * La cadena que acota la altura, eslabón por eslabón.
+ *
+ * `.hilo` tiene que ser contenedor flex, no solo elemento: sin eso el `flex:1`
+ * de `.vista` no se aplica contra nada, la vista crece hasta la altura de toda
+ * la conversación y lo que se desplaza es la página —barra lateral incluida—
+ * en vez del hilo. Y `min-height: 0` en cada eslabón, porque por omisión un
+ * elemento flex no encoge por debajo de su contenido.
+ */
+.hilo {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
 .vista {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
