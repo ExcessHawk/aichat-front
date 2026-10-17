@@ -30,6 +30,17 @@ export interface Modelo {
   outputCentsPerMillion: number
 }
 
+export interface Adjunto {
+  id: number
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  createdAt: string
+  /** Lo que de verdad viaja al modelo en cada turno. No es lo que pesa. */
+  textChars: number
+  truncado?: boolean
+}
+
 export interface Consumo {
   periodStart: string
   inputTokens: number
@@ -75,6 +86,49 @@ export function useConsumo() {
   return useQuery({
     queryKey: ['consumo'],
     queryFn: () => api.get<Consumo>('/api/usage'),
+  })
+}
+
+export function useAdjuntos(conversationId: number | null) {
+  return useQuery({
+    queryKey: ['adjuntos', conversationId],
+    queryFn: () =>
+      api.get<{ attachments: Adjunto[] }>(`/api/conversations/${conversationId}/attachments`),
+    select: (d) => d.attachments,
+    enabled: conversationId !== null,
+  })
+}
+
+export function useSubirAdjunto(conversationId: number | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData()
+      form.append('conversationId', String(conversationId))
+      form.append('file', file)
+      // Sin Content-Type: lo pone el navegador con el boundary, y sin él el
+      // servidor no puede separar las partes.
+      const res = await fetch('/api/attachments', {
+        method: 'POST',
+        headers: sesion.token ? { Authorization: `Bearer ${sesion.token}` } : {},
+        body: form,
+      })
+      const texto = await res.text()
+      const datos = texto ? JSON.parse(texto) : null
+      if (!res.ok) {
+        throw new Error(datos?.error || datos?.detail || datos?.message || `Error ${res.status}`)
+      }
+      return datos as Adjunto
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['adjuntos', conversationId] }),
+  })
+}
+
+export function useQuitarAdjunto(conversationId: number | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.del<{ message: string }>(`/api/attachments/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['adjuntos', conversationId] }),
   })
 }
 

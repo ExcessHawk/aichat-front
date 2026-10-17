@@ -315,6 +315,66 @@ button {
   display: none;
 }
 
+/*
+ * Los documentos de la conversación.
+ *
+ * Van encima del redactor y no en la barra lateral: lo que importa de ellos es
+ * que están puestos *ahora*, justo donde se escribe la siguiente pregunta.
+ */
+.documentos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: var(--ancho-lectura);
+  margin: 0 auto 0.4rem;
+  font-size: 0.78rem;
+}
+
+.documento {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.55rem;
+  background: var(--papel-hundido);
+  border-radius: 999px;
+}
+
+.documento small {
+  color: var(--tinta-suave);
+}
+
+.documento button {
+  padding: 0 0.25rem;
+  color: var(--tinta-suave);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.documento button:hover {
+  color: var(--alerta);
+}
+
+.adjuntar {
+  padding: 0.2rem 0.6rem;
+  color: var(--tinta-suave);
+  border-radius: 999px;
+  border: 1px dashed var(--papel-hundido);
+}
+
+.adjuntar:hover:not(:disabled) {
+  color: var(--tinta);
+}
+
+.adjuntar:disabled {
+  opacity: 0.5;
+}
+
+.documento-error {
+  width: 100%;
+  color: var(--alerta);
+}
+
 .redactor {
   display: flex;
   gap: 0.5rem;

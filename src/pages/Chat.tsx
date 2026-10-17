@@ -16,12 +16,15 @@ import {
   ThreadPrimitive,
 } from '@assistant-ui/react'
 import {
+  useAdjuntos,
   useBorrarConversacion,
   useConsumo,
   useConversaciones,
   useCrearConversacion,
   useMensajes,
   useModelos,
+  useQuitarAdjunto,
+  useSubirAdjunto,
   type EventoChat,
 } from '../api/chat'
 import { sesion } from '../api/client'
@@ -30,6 +33,84 @@ import { useChatRuntime } from '../runtime'
 
 function dinero(centavos: number): string {
   return `$${(centavos / 100).toFixed(2)}`
+}
+
+/** Lo que el navegador puede ofrecer; el servidor decide por los bytes. */
+const ACEPTA = '.pdf,.txt,.md,application/pdf,text/plain,text/markdown'
+
+/** Un documento de 40 caracteres no es "0.0 k". */
+function tamanoTexto(chars: number): string {
+  return chars < 1000 ? `${chars} caracteres` : `${(chars / 1000).toFixed(1)} k de texto`
+}
+
+/**
+ * Los documentos de la conversación.
+ *
+ * No cuelgan de un mensaje sino de la conversación entera, porque eso es lo que
+ * viaja en cada turno. Por eso se dice cuánto texto arrastra cada uno: es lo
+ * que se paga una y otra vez, y no lo que pesa el archivo.
+ */
+function Documentos({ conversationId }: { conversationId: number | null }) {
+  const adjuntos = useAdjuntos(conversationId)
+  const subir = useSubirAdjunto(conversationId)
+  const quitar = useQuitarAdjunto(conversationId)
+  const selector = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  if (conversationId === null) return null
+
+  const elegir = async (archivos: FileList | null) => {
+    if (!archivos?.length) return
+    setError(null)
+    for (const archivo of Array.from(archivos)) {
+      try {
+        await subir.mutateAsync(archivo)
+      } catch (e) {
+        setError(`${archivo.name}: ${e instanceof Error ? e.message : 'no se pudo subir'}`)
+      }
+    }
+    if (selector.current) selector.current.value = ''
+  }
+
+  const lista = adjuntos.data ?? []
+
+  return (
+    <div className="documentos">
+      {lista.map((a) => (
+        <span key={a.id} className="documento">
+          {a.filename}
+          <small>{tamanoTexto(a.textChars)}</small>
+          <button
+            type="button"
+            aria-label={`Quitar ${a.filename}`}
+            onClick={() => void quitar.mutateAsync(a.id)}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+
+      <button
+        type="button"
+        className="adjuntar"
+        onClick={() => selector.current?.click()}
+        disabled={subir.isPending}
+      >
+        {subir.isPending ? 'Leyendo…' : '+ documento'}
+      </button>
+
+      <input
+        ref={selector}
+        type="file"
+        accept={ACEPTA}
+        multiple
+        hidden
+        onChange={(e) => void elegir(e.target.files)}
+      />
+
+      {error && <span className="documento-error">{error}</span>}
+    </div>
+  )
 }
 
 function MensajeUsuario() {
@@ -195,6 +276,8 @@ export function ChatPage() {
                 <ThreadPrimitive.ScrollToBottom className="al-final">
                   Ir al final
                 </ThreadPrimitive.ScrollToBottom>
+
+                <Documentos conversationId={conversationId} />
 
                 <ComposerPrimitive.Root className="redactor">
                   <ComposerPrimitive.Input
