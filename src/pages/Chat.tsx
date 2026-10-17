@@ -148,6 +148,12 @@ export function ChatPage() {
 
   const [ultimoCosto, setUltimoCosto] = useState<number | null>(null)
 
+  // El cron de la demostración borra las conversaciones cada hora, así que un
+  // enlace de hace rato apunta a algo que ya no existe. Decirlo es mejor que
+  // dejar la pantalla en blanco.
+  const noExiste =
+    mensajes.isError && (mensajes.error as { status?: number } | null)?.status === 404
+
   const alEvento = useCallback(
     (evento: EventoChat) => {
       if (evento.type === 'usage') setUltimoCosto(evento.costCents)
@@ -258,6 +264,18 @@ export function ChatPage() {
           <ThreadPrimitive.Root className="hilo">
             <ThreadPrimitive.Viewport className="vista" autoScroll>
               <ThreadPrimitive.Empty>
+                {noExiste ? (
+                  <div className="vacio">
+                    <p>Esa conversación ya no está.</p>
+                    <p className="nota">
+                      Los datos de la demostración se reinician solos cada hora, así que los
+                      enlaces viejos dejan de apuntar a algo. Abre una nueva y sigue.
+                    </p>
+                    <button type="button" className="boton-nueva" onClick={() => void nueva()}>
+                      Nueva conversación
+                    </button>
+                  </div>
+                ) : (
                 <div className="vacio">
                   <p>Pregunta lo que quieras.</p>
                   <p className="nota">
@@ -266,6 +284,7 @@ export function ChatPage() {
                     de verdad.
                   </p>
                 </div>
+                )}
               </ThreadPrimitive.Empty>
 
               <ThreadPrimitive.Messages

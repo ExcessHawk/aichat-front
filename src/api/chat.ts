@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, sesion } from './client'
+import { api, refrescarSesion, sesion } from './client'
 
 export interface Conversacion {
   id: number
@@ -163,15 +163,24 @@ export async function* enviarMensaje(
   content: string,
   signal: AbortSignal,
 ): AsyncGenerator<EventoChat> {
-  const res = await fetch(`/api/conversations/${conversationId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sesion.token ? { Authorization: `Bearer ${sesion.token}` } : {}),
-    },
-    body: JSON.stringify({ content }),
-    signal,
-  })
+  const pedir = () =>
+    fetch(`/api/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sesion.token ? { Authorization: `Bearer ${sesion.token}` } : {}),
+      },
+      body: JSON.stringify({ content }),
+      signal,
+    })
+
+  let res = await pedir()
+
+  // El mismo reintento que el cliente normal: aquí el 401 llegaba como "no se
+  // pudo completar" a media conversación, que es la peor forma de enterarse.
+  if (res.status === 401 && (await refrescarSesion())) {
+    res = await pedir()
+  }
 
   if (!res.ok || !res.body) {
     const texto = await res.text().catch(() => '')

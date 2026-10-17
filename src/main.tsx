@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@fontsource-variable/newsreader'
 import './index.css'
 
-import { sesion } from './api/client'
+import { ENTRADA, sesion } from './api/client'
 import { ChatPage } from './pages/Chat'
 import { ConsumoPage } from './pages/Consumo'
 import { DemoPage } from './pages/Demo'
@@ -19,7 +19,9 @@ const queryClient = new QueryClient({
 })
 
 function Protegida({ children }: { children: React.ReactNode }) {
-  if (!sesion.token) return <Navigate to="/entrar" replace />
+  // Sin sesión se entra por la demostración. Pedirle la contraseña a quien
+  // llegó a mirar es pedirle algo que no tiene.
+  if (!sesion.token) return <Navigate to={ENTRADA} replace />
   return <>{children}</>
 }
 

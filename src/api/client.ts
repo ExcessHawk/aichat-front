@@ -15,7 +15,23 @@ export interface SesionUsuario {
   role: 'user' | 'admin'
 }
 
+/**
+ * A dónde va alguien sin sesión.
+ *
+ * Esta caja es una demostración: la puerta de entrada es la demostración, no
+ * un formulario de contraseña que nadie puede llenar. El formulario sigue en
+ * /entrar para quien tenga cuenta de verdad.
+ */
+export const ENTRADA = '/demo?rol=usuario'
+
 export const sesion = {
+  get refreshToken(): string | null {
+    try {
+      return localStorage.getItem(REFRESH_KEY)
+    } catch {
+      return null
+    }
+  },
   get token(): string | null {
     try {
       return localStorage.getItem(TOKEN_KEY)
@@ -60,6 +76,53 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Renueva la sesión con el token de refresco.
+ *
+ * Se guardaba desde el principio y no lo usaba nadie: a la hora caducaba el de
+ * acceso, el 401 limpiaba todo y el visitante aterrizaba en un formulario de
+ * contraseña. Varias peticiones pueden chocar con el 401 a la vez, así que la
+ * renovación se comparte en vez de dispararse una por cada una.
+ */
+let renovando: Promise<string | null> | null = null
+
+export function refrescarSesion(): Promise<string | null> {
+  if (renovando) return renovando
+
+  renovando = (async () => {
+    const refreshToken = sesion.refreshToken
+    if (!refreshToken) return null
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      if (!res.ok) return null
+      const datos = (await res.json()) as {
+        token: string
+        refreshToken: string
+        user: SesionUsuario
+      }
+      sesion.guardar(datos)
+      return datos.token
+    } catch {
+      return null
+    } finally {
+      renovando = null
+    }
+  })()
+
+  return renovando
+}
+
+function alaEntrada() {
+  sesion.limpiar()
+  if (!location.pathname.startsWith('/demo') && !location.pathname.startsWith('/entrar')) {
+    location.href = ENTRADA
+  }
+}
+
 function cabeceras(conCuerpo: boolean): Record<string, string> {
   const h: Record<string, string> = {}
   const token = sesion.token
@@ -68,7 +131,7 @@ function cabeceras(conCuerpo: boolean): Record<string, string> {
   return h
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, reintento = false): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: cabeceras(body !== undefined),
@@ -76,8 +139,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (res.status === 401) {
-    sesion.limpiar()
-    if (!location.pathname.startsWith('/entrar')) location.href = '/entrar'
+    // Un solo reintento: si la renovación también da 401, el problema no es el
+    // token caducado y repetir solo haría un bucle.
+    if (!reintento && path !== '/api/auth/refresh' && (await refrescarSesion())) {
+      return request<T>(method, path, body, true)
+    }
+    alaEntrada()
     throw new ApiError(401, 'La sesión terminó')
   }
 
