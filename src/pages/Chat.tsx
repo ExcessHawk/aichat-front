@@ -226,6 +226,12 @@ export function ChatPage() {
 
   const actual = conversaciones.data?.find((c) => c.id === conversationId)
 
+  // Una conversación creada con otro proveedor guarda un id que ya no existe;
+  // el servidor responde con el primero disponible, así que la pantalla tiene
+  // que decir ese y no el id muerto que estaba guardado.
+  const modelo =
+    modelos.data?.find((m) => m.id === actual?.model) ?? modelos.data?.[0] ?? null
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className="pantalla">
@@ -282,13 +288,16 @@ export function ChatPage() {
             <div>
               <h1>{actual?.title ?? 'Conversación nueva'}</h1>
               <p className="modelo">
-                {modelos.data?.find((m) => m.id === actual?.model)?.label ?? actual?.model ?? ''}
+                {modelo?.label ?? actual?.model ?? ''}
                 {ultimoCosto !== null && ` · último turno ${dinero(ultimoCosto)}`}
               </p>
             </div>
           </header>
 
-          <ThreadPrimitive.Root className="hilo">
+          <ThreadPrimitive.Root
+            className="hilo"
+            style={{ '--quien-responde': `"${modelo?.label ?? 'Asistente'}"` } as React.CSSProperties}
+          >
             <ThreadPrimitive.Viewport className="vista" autoScroll>
               <ThreadPrimitive.Empty>
                 {noExiste ? (

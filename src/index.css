@@ -182,30 +182,71 @@ button {
   padding: 1rem 2rem 0;
 }
 
+/* ── Turnos ───────────────────────────────────────────────────────────────
+ *
+ * Sin globos ni tarjetas, pero con algo que distinga quién habla: antes la
+ * respuesta empezaba sin nada y se leía como texto suelto pegado a la
+ * pregunta. Lo que separa los turnos es el aire y una línea finísima antes de
+ * cada pregunta nueva; lo que los distingue es la tipografía y una etiqueta
+ * pequeña que dice de quién es cada cosa.
+ */
+
 .turno {
   width: 100%;
   max-width: var(--ancho-lectura);
   margin: 0 auto;
-  padding: 0.85rem 0;
+  padding: 1.6rem 0 0.4rem;
 }
 
-.turno-usuario {
-  color: var(--tinta);
-  font-weight: 500;
-}
-
-.turno-usuario::before {
-  content: 'Tú';
+/* La etiqueta de quién habla. Está, pero no estorba. */
+.turno::before {
   display: block;
-  margin-bottom: 0.2rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--tinta-suave);
 }
 
+/*
+ * La línea va antes de la pregunta y no entre pregunta y respuesta: lo que
+ * cierra un intercambio es que empiece el siguiente, no que el modelo conteste.
+ */
+.turno-usuario {
+  margin-top: 1.2rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid var(--papel-hundido);
+  color: var(--tinta);
+  font-size: 1.02rem;
+  font-weight: 500;
+}
+
+/* La primera pregunta no necesita separarse de nada. */
+.turno-usuario:first-child {
+  margin-top: 0;
+  padding-top: 0.4rem;
+  border-top: none;
+}
+
+.turno-usuario::before {
+  content: 'Tú';
+}
+
+/*
+ * Quién responde lo pone la pantalla, no esta hoja: el nombre del modelo entra
+ * por una variable para que la etiqueta diga "Gemini 3.8 Flash" y no un
+ * genérico que no informa de nada.
+ */
+.turno-asistente::before {
+  content: var(--quien-responde, 'Asistente');
+  color: var(--acento);
+}
+
 /* Lo que se lee va en serif; lo que se usa, no. */
 .turno-asistente {
+  padding-bottom: 1.2rem;
   font-family: var(--serif);
   font-size: 1.12rem;
   line-height: 1.75;
@@ -213,6 +254,10 @@ button {
 
 .turno-asistente p {
   margin: 0 0 0.9rem;
+}
+
+.turno-asistente > :last-child {
+  margin-bottom: 0;
 }
 
 .turno-asistente ul {
