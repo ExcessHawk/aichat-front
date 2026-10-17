@@ -35,6 +35,9 @@ export function useChatRuntime(
         let ultimoPintado = 0
 
         for await (const evento of enviarMensaje(conversationId, texto, abortSignal)) {
+          // El latido solo mantiene viva la conexión; no hay nada que pintar.
+          if (evento.type === 'latido') continue
+
           if (evento.type === 'token') {
             acumulado += evento.text
             // Agrupar por cuadro: un yield por token hace que React re-renderice

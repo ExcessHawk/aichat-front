@@ -51,6 +51,11 @@ export interface Consumo {
 }
 
 export type EventoChat =
+  /**
+   * Señal de vida mientras el modelo piensa. No se pinta: solo evita que el
+   * canal se quede mudo tanto rato que alguien lo dé por muerto y lo cierre.
+   */
+  | { type: 'latido' }
   | { type: 'token'; text: string }
   | { type: 'usage'; inputTokens: number; outputTokens: number; costCents: number }
   | { type: 'done'; messageId: number; stopped: boolean }
